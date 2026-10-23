@@ -1,0 +1,52 @@
+{
+  "manifest_version": 3,
+  "name": "Snag",
+  "version": "0.1.0",
+  "description": "Download videos and audio with Snag, the app running on this PC.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAmz6eMVIq+ou0eM1FNMrajPMif3wpevXk7CQQM8vONue8C0vFfu0W3rZDZAdVkzlEVuqFworfrkgqTs0/U9aq2ZCgPkwwx3q0ZMzlTtxS9tjsqqFvWBStPsYzGIJtVkOCXWeurRmdpk9mIWvyI8sVqAFrb+x5oHcmKwNp/XPesOCw6v/BZa9mFv4cPkuWPZG/ei9V+Qi+pEvYcFZ9nwI9SHrFsgFweUdhWKIAADeL1WQ2ecs++m0U/dzxkniwccfFIie1f2mYq49iXL9Yz7DPK2xoP0K2TjLAzfLgUmVHpuCnitdaoKFsPYE61b6Q6zYX40yKwQi9trXfUe7Tur52PwIDAQAB",
+  "minimum_chrome_version": "116",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "action": {
+    "default_title": "Snag",
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "permissions": [
+    "contextMenus",
+    "cookies",
+    "notifications",
+    "alarms",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "http://*/*",
+    "https://*/*",
+    "http://127.0.0.1:47823/*"
+  ],
+  "incognito": "not_allowed",
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.youtube.com/*"
+      ],
+      "js": [
+        "content/youtube.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}

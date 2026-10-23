@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "snag"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.142",
+    "uvicorn>=0.54",
+    # uvicorn without [standard] has no WebSocket implementation; the hub at /ws needs one.
+    "websockets>=15",
+    "httpx>=0.28",
+    # Capped: snag.platform.tray overrides a private method of pystray's Windows icon
+    # (_assert_icon_handle); tests/test_platform_tray.py checks pystray still calls it.
+    "pystray>=0.19.5,<0.20",
+    # 11.3 keeps every hand-drawn frame of the tray icon when it is saved as .ico again.
+    "Pillow>=11.3",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "pytest-asyncio>=0.24",
+    # scripts/make_extension_key.py only: generates the extension's key pair.
+    "cryptography",
+    # Pinned: parity tests read this yt-dlp's source and compare Snag's copies of its rules (merge
+    # container, cover-art containers, SponsorBlock categories, option parsing) with it. Bump it on
+    # purpose and re-run the tests: those rules can change between releases.
+    "yt-dlp==2026.08.19",
+]
+
+[tool.setuptools.packages.find]
+include = ["snag*"]
+
+[tool.setuptools.package-data]
+"snag.platform" = ["snag.ico"]  # the shortcuts' icon
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+pythonpath = ["."]
+markers = [
+    "slow: starts Snag itself as a process (tests/test_main_integration.py); still part of the default run",
+]

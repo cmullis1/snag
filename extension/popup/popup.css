@@ -1,0 +1,55 @@
+/* The toolbar popup: 380 px wide (spec 4.10), on top of the shared look (ui/base.css). Browsers size
+   the popup to its content, up to 800 x 600; the view scrolls inside it beyond that. */
+
+.popup-body {
+  width: 380px;
+  min-width: 380px;
+  max-height: 600px;
+  background: var(--bg);
+}
+
+.popup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  min-width: 0;
+}
+
+.popup-header { min-height: 24px; }
+
+.popup-notice { align-items: center; }
+.popup-notice[hidden] { display: none; }
+
+.popup-view { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
+.popup-view > .panel {
+  padding: var(--space-3);
+  border: var(--hairline) solid var(--border);
+  border-radius: var(--radius-l);
+  background: var(--surface);
+}
+
+.popup-title { font-size: var(--text-l); font-weight: 600; overflow-wrap: anywhere; }
+.popup-loading { min-height: 40px; }
+.popup-empty { --gap: var(--space-3); }
+.popup-setup p { color: inherit; }
+.popup-setup .field-error:empty { display: none; }
+
+.popup-paste { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.popup-paste-row { display: flex; gap: var(--space-2); min-width: 0; }
+.popup-paste-row .input { flex: 1 1 auto; min-width: 0; }
+.popup-paste-row .btn { flex: none; }
+.popup-paste .field-error:empty { display: none; }
+
+.popup-queue {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding-top: var(--space-2);
+  border-top: var(--hairline) solid var(--border);
+}
+.popup-queue[hidden] { display: none; }
+.popup-queue-text { color: var(--text-muted); }
+
+/* The toasts sit above the queue line, inside the small window. */
+.popup-body > .toasts { top: auto; right: var(--space-3); bottom: var(--space-3); left: var(--space-3); align-items: stretch; }

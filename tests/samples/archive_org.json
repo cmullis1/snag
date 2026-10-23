@@ -1,0 +1,39 @@
+{
+ "_type": "video",
+ "id": "Cops1922",
+ "title": "Buster Keaton's \"Cops\" (1922)",
+ "duration": 1091.96,
+ "thumbnail": "https://archive.org/download/Cops1922/Cops1922.thumbs/Cops-v2_001074.jpg",
+ "upload_date": "20131222",
+ "extractor": "archive.org",
+ "extractor_key": "ArchiveOrg",
+ "webpage_url": "https://archive.org/details/Cops1922",
+ "subtitles": {},
+ "automatic_captions": {},
+ "formats": [
+  {
+   "format_id": "0",
+   "ext": "ogv",
+   "protocol": "https",
+   "height": 300,
+   "width": 400,
+   "abr": null,
+   "tbr": null,
+   "filesize": 70327598,
+   "format_note": "derivative",
+   "dynamic_range": "SDR"
+  },
+  {
+   "format_id": "1",
+   "ext": "mp4",
+   "protocol": "https",
+   "height": 480,
+   "width": 640,
+   "abr": null,
+   "tbr": null,
+   "filesize": 164088517,
+   "format_note": "original",
+   "dynamic_range": "SDR"
+  }
+ ]
+}
