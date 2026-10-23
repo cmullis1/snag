@@ -50,6 +50,80 @@ not from real downloads.
 
 Snag is for downloading what you have the right to download, for your own use.
 
+## How it works
+
+```
+Chrome / Edge extension           Web page (http://127.0.0.1:47823/)
+popup, right-click, YouTube       Download, History, Settings
+button
+            \                        /
+     HTTP + WebSocket, 127.0.0.1 only, origin-checked
+                       |
+          Snag server (Python, tray app)
+  lookup, job queue, SQLite history and settings, updater, tray
+                       |  one process per download
+                    yt-dlp  ->  ffmpeg, Deno
+```
+
+**One engine, two front ends.** A FastAPI app served by uvicorn holds everything: the lookup
+service, the job queue, the SQLite store, the updater and the tray icon (`pystray`). The web page
+and the extension popup run the same plain ES-module code from `ui/` (no framework, no build step).
+They receive a snapshot over one WebSocket when they connect, then live events (progress, queue and
+settings changes), reconnecting with capped exponential backoff. Manifest V3 forbids loading code
+from the local server, so the extension carries its own copy in `extension/ui/`;
+`scripts/sync_ui.py` keeps the two identical and the tests fail while they differ.
+
+**Each download is its own yt-dlp process.** A pure function turns a job (URL, chosen formats,
+extras, folder) into yt-dlp arguments. The queue runs up to a configurable number of jobs at once.
+The runner reads yt-dlp's output through custom `--progress-template` lines on stdout and stderr
+to get speed, ETA and post-processing stages, and adds up both streams when video and audio
+download separately. On Windows every child runs inside two Job Objects: Snag's own, so a crashed
+Snag never leaves yt-dlp or ffmpeg running, and the child's, so cancelling ends yt-dlp and
+everything it started. Each job downloads into its own working folder and is moved into place with
+a same-drive rename that never overwrites, so partial files never land in a synced folder. Every
+state change is saved to SQLite: after a restart, interrupted jobs are re-queued and resume from
+their partial files, and failed jobs stay until they are retried or cleared.
+
+**Turning formats into a short list.** yt-dlp's raw list is filtered (storyboards, DRC audio, HLS
+copies of direct formats), reduced to the best-ranked format at each resolution and paired with the
+original-language audio track. The container a merge produces follows yt-dlp's own
+`get_compatible_ext` rules, mirrored in `snag/info/containers.py` and parity-tested against the
+installed yt-dlp, so the file type and size shown match the result. A format that has since
+disappeared is replaced by the closest match from a fresh lookup (same resolution, container and
+codec family first). The command builder also avoids combinations yt-dlp can't handle, such as
+embedding a thumbnail into WebM.
+
+**Failures become advice.** `snag/errors.py` matches yt-dlp's output against a table of known
+patterns and returns a message, a next step and whether a retry makes sense. Some failures are
+handled without asking: a sign-in error is retried once with cookies, a stale-link 403 re-extracts
+the download links, a failed subtitle download is retried without subtitles, and an HTTP 429
+pauses the queue for five minutes, then runs one download at a time for half an hour.
+
+**Sign-in without storing it.** Chrome and Edge encrypt their cookies, so yt-dlp often can't read
+them. The extension first asks Snag without cookies, and only when Snag answers that sign-in is
+needed does it read that site's cookies and resend the request with them. The server keeps them in
+memory and writes them to a temporary `cookies.txt` for the one lookup or download that needs it.
+A YouTube snapshot is refreshed every 30 minutes so downloads started from the web page work too.
+
+**Local only, and only for you.** The server binds `127.0.0.1`. A middleware checks the `Host`
+header (against DNS rebinding) and the `Origin` of every request that changes something and every
+WebSocket, allowing only the web page and the extension, whose ID is fixed by the `key` in its
+manifest. Because several Windows users can be signed in at once and share `127.0.0.1`, it also
+finds the process on the other end of each connection in the TCP table (`GetExtendedTcpTable`),
+compares its token's user with Snag's own, and refuses other users and anything it can't identify.
+
+**Safe tool updates.** Snag downloads yt-dlp, ffmpeg and Deno from their GitHub releases, verifies
+SHA-256 checksums, runs the new executable once, waits for running downloads to finish (Windows
+can't replace a running `.exe`) and then swaps it in with rollback, so a failed update leaves the
+working version in place.
+
+**Testing.** `tests/fake_ytdlp.py` stands in for yt-dlp and can emit progress, succeed, fail with
+a chosen error, stall or throttle, which covers the queue, cancel, resume and error handling
+without the network. Trimmed recordings of real `yt-dlp -J` output (a dubbed video, a playlist, a
+non-YouTube page) check the format logic against real data, and the parity test compares the
+container logic with the installed yt-dlp. The JavaScript is tested with Node's built-in test
+runner against a small fake DOM.
+
 ## How to run it
 
 You need Windows 10 or 11 and [Python 3.12 or newer](https://www.python.org/downloads/) from
@@ -167,26 +241,14 @@ folder and `%LOCALAPPDATA%\Snag`.
 
 One pytest run covers the Python tests and the JavaScript tests in `tests/js` (run with Node's
 built-in test runner, Node 21 or newer). The tests never touch `%LOCALAPPDATA%\Snag`, never
-download the real tools, never touch the network, and leave no process running:
-`tests/fake_ytdlp.py` stands in for yt-dlp, and recorded `yt-dlp -J` output in `tests/samples/`
-checks the format logic against real data. `tests/test_main_integration.py` (marked `slow`, part of
-the default run) starts `python -m snag` as a process through its test hook (`SNAG_TEST_HOOK=1`;
-see `snag/__main__.py`).
+download the real tools, never touch the network, and leave no process running.
+`tests/test_main_integration.py` (marked `slow`, part of the default run) starts `python -m snag`
+as a process through its test hook (`SNAG_TEST_HOOK=1`; see `snag/__main__.py`).
 
-The extension can't load code from the local server (Manifest V3 forbids it), so it ships its own
-copy of `ui/` in `extension/ui/`. After changing anything in `ui/`, run
-`.venv/Scripts/python scripts/sync_ui.py`; the tests fail while the two differ.
+After changing anything in `ui/`, run `.venv/Scripts/python scripts/sync_ui.py` to update the
+extension's copy.
 
-## How it was built
-
-I built Snag to stop typing yt-dlp commands by hand. I owned the problem and the decisions: what
-it should do, how formats should be simplified, how failures should read, how downloads should
-recover, and how the extension may use browser sign-ins. I wrote the design spec with Claude Code,
-tested it on real downloads and decided when each part was done. Claude Code wrote most of the
-code.
-
-The project has 2,393 pytest tests, two of which run the 582 JavaScript tests for the web page and
-the extension.
+Built with Claude Code.
 
 ## License
 
